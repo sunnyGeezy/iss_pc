@@ -82,6 +82,11 @@ keep_anyway = ('/qml/Qt/labs/folderlistmodel',)
 
 def keep(entry):
     path = '/' + entry[0].replace('\\', '/')
+    # The pinned Windows Qt wheel imports Windows' unversioned ICU API. MSYS2's
+    # icuuc.dll can be discovered on PATH but exports a different ABI. Let Qt load
+    # the OS DLL on supported Windows 10/11 systems; retain Linux ICU libraries.
+    if os.name == 'nt' and path.lower().endswith('/icuuc.dll'):
+        return False
 
     def matches(marks):
         return any(mark in path or path.endswith('/' + mark) or path.startswith('/' + mark)
