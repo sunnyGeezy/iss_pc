@@ -117,7 +117,9 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: karma-switcher-linux-test
-          path: port/dist/karma-switcher-linux-*.zip
+          path: |
+            port/dist/karma-switcher-linux-*.zip
+            port/dist/karma-switcher-linux-sha256.json
           if-no-files-found: error
           retention-days: 30
       - uses: actions/upload-artifact@v4
@@ -125,3 +127,33 @@ jobs:
         with:
           name: linux-build-logs
           path: port/out/*build.log
+
+  publish-test-release:
+    needs: linux
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: karma-switcher-linux-test
+          path: release-assets
+      - name: Verify tested Windows package
+        run: |
+          echo '86bf4a4e647c9f57621b4bc89417e7c577900ccd069fa0562cbee90be168134a  .github/release-inputs/karma-switcher-windows-update.zip' | sha256sum -c -
+          cp .github/release-inputs/karma-switcher-windows-update.zip release-assets/
+          python3 - <<'PY'
+          import zipfile
+          from pathlib import Path
+          for p in Path('release-assets').glob('*.zip'):
+              with zipfile.ZipFile(p) as z:
+                  assert z.testzip() is None, str(p)
+          PY
+          cd release-assets
+          sha256sum *.zip > SHA256SUMS.txt
+      - name: Publish separate test release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create karma-switcher-test-2026-10-22 release-assets/* --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --title 'Karma Switcher + Camera Fixes - Windows and Linux Test' --notes-file .github/release-inputs/karma-release-notes.md --prerelease --latest=false
