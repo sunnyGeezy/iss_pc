@@ -31,6 +31,7 @@ inline bool Mark(unsigned) { return false; }
 #include "../../src/actor_hook.h"
 
 extern TlgActorSlot tlg_actor_slots[2];
+void TlgKarmaMenu();
 extern "C" void runtime_restart(void); // src/probe.c: starts run.py again, ends this process
 #include "common/elf_info.h"
 #ifndef TLG_RENDERER_V2
@@ -149,7 +150,7 @@ void SetOpen(bool value) {
     if (menu_open.exchange(value) == value) {
         return;
     }
-    ImGui::GetIO().MouseDrawCursor = value;
+    overlay_context->IO.MouseDrawCursor = value;
     if (value) {
         requested_tab = TlgSettings::Get().menu_tab;
     }
@@ -390,7 +391,7 @@ void ImageTab() {
     ImGui::SeparatorText(TL("Display", "Tela"));
     if (BeginRows("##display")) {
         static const char* const modes[] = {TL("Windowed", "Janela"), TL("Borderless window", "Janela sem borda"), TL("Fullscreen", "Tela cheia")};
-        ChoiceRow(TL("Display mode", "Modo de exibição"), s.display_mode, G::DisplayModeCount == 3 ? modes : G::DisplayModeNames.data(),
+        ChoiceRow(TL("Display mode", "Modo de exibiÃ§Ã£o"), s.display_mode, G::DisplayModeCount == 3 ? modes : G::DisplayModeNames.data(),
                   nullptr, G::DisplayModeCount, TL("Windowed, borderless window or exclusive fullscreen.", "Janela, janela sem borda ou tela cheia exclusiva."));
         CheckRow("VSync", s.vsync, TL("Waits for the monitor: no tearing, a little more input delay.", "Espera o monitor: sem tearing, um pouco mais de atraso de entrada."));
         ImGui::EndTable();
@@ -404,49 +405,49 @@ void ImageTab() {
     ImGui::SeparatorText(TL("Scaling and sharpening", "Escala e nitidez"));
     if (BeginRows("##scaling")) {
         CheckRow(TL("Upscale with FSR 1", "Ampliar com FSR 1"), s.fsr1,
-                 TL("Enlarges the game image when it is smaller than the window (spatial filter, no shimmer).", "Amplia a imagem do jogo quando ela é menor que a janela (filtro espacial, sem tremor)."));
+                 TL("Enlarges the game image when it is smaller than the window (spatial filter, no shimmer).", "Amplia a imagem do jogo quando ela Ã© menor que a janela (filtro espacial, sem tremor)."));
         ImGui::BeginDisabled(rcas_blocked);
         CheckRow(TL("Sharpening (RCAS)", "Nitidez (RCAS)"), s.rcas,
-                 rcas_blocked && downscaling ? TL("No effect: the game's image is larger than the window.", "Sem efeito: a imagem do jogo é maior que a janela.")
-                 : rcas_blocked              ? TL("Needs FSR 1: the game's image is smaller than the window.", "Precisa do FSR 1: a imagem do jogo é menor que a janela.")
-                                             : TL("Sharpens the final image.", "Deixa a imagem final mais nítida."));
+                 rcas_blocked && downscaling ? TL("No effect: the game's image is larger than the window.", "Sem efeito: a imagem do jogo Ã© maior que a janela.")
+                 : rcas_blocked              ? TL("Needs FSR 1: the game's image is smaller than the window.", "Precisa do FSR 1: a imagem do jogo Ã© menor que a janela.")
+                                             : TL("Sharpens the final image.", "Deixa a imagem final mais nÃ­tida."));
         ImGui::EndDisabled();
         ImGui::BeginDisabled(!s.rcas || rcas_blocked);
-        SliderRow(TL("Sharpening strength", "Intensidade da nitidez"), s.rcas_strength, 0, 100, "%d%%", TL("How strong the sharpening is.", "Quão forte é a nitidez."));
+        SliderRow(TL("Sharpening strength", "Intensidade da nitidez"), s.rcas_strength, 0, 100, "%d%%", TL("How strong the sharpening is.", "QuÃ£o forte Ã© a nitidez."));
         ImGui::EndDisabled();
         ImGui::EndTable();
     }
-    ImGui::SeparatorText(TL("Draw distance and detail", "Distância de visão e detalhe"));
+    ImGui::SeparatorText(TL("Draw distance and detail", "DistÃ¢ncia de visÃ£o e detalhe"));
     if (BeginRows("##view")) {
         ImGui::BeginDisabled(!s.view_supported);
-        FloatRow(TL("LOD distance", "Distância do LOD"), s.lod_scale, 0.25f, 4.0f, "%.2fx",
+        FloatRow(TL("LOD distance", "DistÃ¢ncia do LOD"), s.lod_scale, 0.25f, 4.0f, "%.2fx",
                  s.view_supported ? TL("How far objects keep their detailed models (every LOD band). Above 1x costs CPU and GPU; "
                                        "the game still lowers it on its own in heavy scenes.",
-                                       "Até onde os objetos mantêm os modelos detalhados (todas as faixas de LOD). Acima de 1x pesa na CPU e na GPU; "
+                                       "AtÃ© onde os objetos mantÃªm os modelos detalhados (todas as faixas de LOD). Acima de 1x pesa na CPU e na GPU; "
                                        "o jogo ainda reduz sozinho em cenas pesadas.")
-                                  : TL(Unsupported, "Indisponível: versão do jogo ou assinatura do código diferente."));
-        FloatRow(TL("Regions' LOD_ADJUST", "LOD_ADJUST das regiões"), s.region_lod, 0.0f, 1.0f, "%.2f",
+                                  : TL(Unsupported, "IndisponÃ­vel: versÃ£o do jogo ou assinatura do cÃ³digo diferente."));
+        FloatRow(TL("Regions' LOD_ADJUST", "LOD_ADJUST das regiÃµes"), s.region_lod, 0.0f, 1.0f, "%.2f",
                  TL("How much the map regions' own LOD changes count: 1 as in the game, 0 ignored.",
-                    "Quanto contam as mudanças de LOD das regiões do mapa: 1 como no jogo, 0 ignoradas."));
-        FloatRow(TL("Regions' FADE_DISTANCE", "FADE_DISTANCE das regiões"), s.region_fade, 0.25f, 4.0f, "%.2fx",
+                    "Quanto contam as mudanÃ§as de LOD das regiÃµes do mapa: 1 como no jogo, 0 ignoradas."));
+        FloatRow(TL("Regions' FADE_DISTANCE", "FADE_DISTANCE das regiÃµes"), s.region_fade, 0.25f, 4.0f, "%.2fx",
                  TL("Distance over which a region's lighting, haze and LOD settings blend in (multiplier).",
-                    "Distância em que a luz, a névoa e o LOD de uma região se misturam ao entrar nela (multiplicador)."));
-        FloatRow(TL("Near clip (NEAR_CLIP)", "Plano próximo (NEAR_CLIP)"), s.near_clip, 1.0f, 100.0f, "%.1f",
+                    "DistÃ¢ncia em que a luz, a nÃ©voa e o LOD de uma regiÃ£o se misturam ao entrar nela (multiplicador)."));
+        FloatRow(TL("Near clip (NEAR_CLIP)", "Plano prÃ³ximo (NEAR_CLIP)"), s.near_clip, 1.0f, 100.0f, "%.1f",
                  TL("Default near plane of the cameras (the game uses 10). Lower shows objects closer to the camera, "
                     "higher reduces depth flicker far away. Applies to the next camera (load, cutscene).",
-                    "Plano próximo padrão das câmeras (o jogo usa 10). Menor mostra objetos mais perto da câmera, "
-                    "maior reduz o tremido de profundidade ao longe. Vale na próxima câmera (carregamento, cena)."));
+                    "Plano prÃ³ximo padrÃ£o das cÃ¢meras (o jogo usa 10). Menor mostra objetos mais perto da cÃ¢mera, "
+                    "maior reduz o tremido de profundidade ao longe. Vale na prÃ³xima cÃ¢mera (carregamento, cena)."));
         FloatRow(TL("Far clip (FAR_CLIP)", "Plano distante (FAR_CLIP)"), s.far_clip, 1000.0f, 1.0e7f, "%.0f",
                  TL("Default far plane of the cameras (the game uses 10000000, unlimited). Lower cuts the view; "
                     "applies to the next camera.",
-                    "Plano distante padrão das câmeras (o jogo usa 10000000, sem limite). Menor corta a visão; "
-                    "vale na próxima câmera."),
+                    "Plano distante padrÃ£o das cÃ¢meras (o jogo usa 10000000, sem limite). Menor corta a visÃ£o; "
+                    "vale na prÃ³xima cÃ¢mera."),
                  ImGuiSliderFlags_Logarithmic);
         ImGui::EndDisabled();
         FloatRow(TL("Texture LOD bias (MipLodBias)", "Bias de LOD das texturas (MipLodBias)"), s.mip_lod_bias, -3.0f, 3.0f,
                  "%+.2f",
                  TL("Negative: sharper textures at a distance (more shimmer, a little more GPU). Positive: blurrier.",
-                    "Negativo: texturas mais nítidas ao longe (mais cintilação, um pouco mais de GPU). Positivo: mais borradas."));
+                    "Negativo: texturas mais nÃ­tidas ao longe (mais cintilaÃ§Ã£o, um pouco mais de GPU). Positivo: mais borradas."));
         Row(TL("Restore the game's values", "Voltar aos valores do jogo"));
         if (ImGui::SmallButton(TL("Restore", "Restaurar"))) {
             s.lod_scale = 1.0f;
@@ -462,15 +463,15 @@ void ImageTab() {
         ImGui::PopID();
         ImGui::EndTable();
     }
-    ImGui::SeparatorText(TL("Information", "Informações"));
+    ImGui::SeparatorText(TL("Information", "InformaÃ§Ãµes"));
     if (BeginRows("##image_info")) {
         char text[96];
         std::snprintf(text, sizeof(text), "%d x %d", iw, ih);
         InfoRow(TL("Game image", "Imagem do jogo"), text);
         std::snprintf(text, sizeof(text), "%d x %d", ww, wh);
         InfoRow(TL("Windowed", "Janela"), text);
-        InfoRow("FSR 1", !s.fsr1 ? TL("off", "desligado") : upscaling ? TL("active", "ativo") : TL("no effect (image not smaller than window)", "sem efeito (imagem não é menor que a janela)"));
-        InfoRow(TL("Sharpening", "Nitidez"), s.rcas_applied ? TL("applied", "aplicada") : TL("not applied", "não aplicada"));
+        InfoRow("FSR 1", !s.fsr1 ? TL("off", "desligado") : upscaling ? TL("active", "ativo") : TL("no effect (image not smaller than window)", "sem efeito (imagem nÃ£o Ã© menor que a janela)"));
+        InfoRow(TL("Sharpening", "Nitidez"), s.rcas_applied ? TL("applied", "aplicada") : TL("not applied", "nÃ£o aplicada"));
         ImGui::EndTable();
     }
 }
@@ -481,8 +482,8 @@ void PerformanceTab() {
     if (TlgPerf::Enabled()) {
         ImGui::SeparatorText(TL("Performance capture", "Captura de desempenho"));
         static int category = 0;
-        const char* labels[] = {TL("Absorb smoke", "Absorver fumaça"), TL("Use power", "Usar poder"),
-                                TL("Movement", "Movimentação"), TL("Other", "Outro")};
+        const char* labels[] = {TL("Absorb smoke", "Absorver fumaÃ§a"), TL("Use power", "Usar poder"),
+                                TL("Movement", "MovimentaÃ§Ã£o"), TL("Other", "Outro")};
         ImGui::Combo(TL("Event", "Evento"), &category, labels, 4);
         if (ImGui::Button(TL("Mark performance event", "Marcar evento de desempenho"))) {
             const bool accepted = TlgPerf::Mark(static_cast<unsigned>(category + 1));
@@ -496,14 +497,16 @@ void PerformanceTab() {
     // offered: they do not apply to TLG, and the readback ones crash it (it needs precise readbacks).
     ImGui::SeparatorText(TL("Live", "Em tempo real"));
     if (BeginRows("##live")) {
-        static const char* const fps_labels[] = {"30", "120", "240", TL("Unlimited", "Sem limite")};
+        static const char* const fps_labels[] = {"30", "60", "120", "240", TL("Unlimited", "Sem limite")};
+        static_assert(sizeof(fps_labels) / sizeof(fps_labels[0]) == G::FpsLimits.size(),
+                      "Every FPS limit must have a matching dropdown label");
         ChoiceRow(TL("Frame rate limit", "Limite de FPS"), s.fps_limit, fps_labels, G::FpsLimits.data(), int(G::FpsLimits.size()),
                   TL("Caps the presented frames. The game runs at 30 FPS (as on PS4).", "Limita os quadros apresentados. O jogo roda a 30 FPS (como no PS4)."));
         static const char* const queued_labels[] = {TL("1 (lowest latency)", "1 (menor atraso)"), "2", TL("Unlimited", "Sem limite")};
         ChoiceRow(TL("Frames queued", "Quadros na fila"), s.frames_queued, queued_labels, G::FramesQueued.data(),
-                  int(G::FramesQueued.size()), TL("More frames queued: steadier FPS, slower response to input.", "Mais quadros na fila: FPS mais estável, resposta mais lenta."));
+                  int(G::FramesQueued.size()), TL("More frames queued: steadier FPS, slower response to input.", "Mais quadros na fila: FPS mais estÃ¡vel, resposta mais lenta."));
         CheckRow(TL("Compile new shaders in the background", "Compilar shaders novos em segundo plano"), s.async_shaders,
-                 TL("Fewer stutters in new areas; an object or effect may appear a moment later.", "Menos engasgos em áreas novas; um objeto ou efeito pode aparecer um instante depois."));
+                 TL("Fewer stutters in new areas; an object or effect may appear a moment later.", "Menos engasgos em Ã¡reas novas; um objeto ou efeito pode aparecer um instante depois."));
         ImGui::EndTable();
     }
     FixesSection();
@@ -517,17 +520,17 @@ void PerformanceTab() {
 #ifdef TLG_RENDERER_V2
 // Renderer v2 has its own fixes and switches (ISS_* variables): none of this port's.
 void FixesSection() {
-    ImGui::SeparatorText(TL("Fixes", "Correções"));
+    ImGui::SeparatorText(TL("Fixes", "CorreÃ§Ãµes"));
     ImGui::TextDisabled("%s", TL("This build uses renderer v2: its own fixes apply.",
-                                 "Esta versão usa o renderer v2: valem as correções dele."));
+                                 "Esta versÃ£o usa o renderer v2: valem as correÃ§Ãµes dele."));
 }
 #else
 void FixesSection() {
     namespace B = Common::Backports;
     auto& s = TlgSettings::Get();
-    ImGui::SeparatorText(TL("Fixes", "Correções"));
+    ImGui::SeparatorText(TL("Fixes", "CorreÃ§Ãµes"));
     ImGui::TextDisabled("%s", TL("Marked (next start) are saved now and apply the next time the game starts.",
-                                 "As marcadas (próxima partida) são gravadas agora e valem na próxima vez que o jogo abrir."));
+                                 "As marcadas (prÃ³xima partida) sÃ£o gravadas agora e valem na prÃ³xima vez que o jogo abrir."));
     const ImVec4 amber(0.85f, 0.72f, 0.45f, 1.0f);
     if (ImGui::BeginTable("##fixes", 4, ImGuiTableFlags_SizingStretchProp)) {
         ImGui::TableSetupColumn("name", ImGuiTableColumnFlags_WidthStretch, 0.50f);
@@ -557,13 +560,13 @@ void FixesSection() {
                 }
             }
             Help(live ? TL("Applies at once.", "Vale na hora.")
-                      : TL("Applies on next start.", "Vale na próxima partida."));
+                      : TL("Applies on next start.", "Vale na prÃ³xima partida."));
             ImGui::PopID();
             if (!live) {
                 ImGui::SameLine();
                 const bool differs = shown != running;
                 ImGui::TextColored(differs ? amber : ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled), "%s",
-                                   TL("(next start)", "(próxima partida)"));
+                                   TL("(next start)", "(prÃ³xima partida)"));
             }
             ImGui::TableNextColumn();
             ImGui::TextDisabled("%llu", static_cast<unsigned long long>(B::Hits(id)));
@@ -574,7 +577,7 @@ void FixesSection() {
     }
 
     // A/B switches read once at start (recompiler or device creation): next start only.
-    ImGui::SeparatorText(TL("A/B switches (next start)", "Chaves A/B (próxima partida)"));
+    ImGui::SeparatorText(TL("A/B switches (next start)", "Chaves A/B (prÃ³xima partida)"));
     struct Extra { const char* name; bool (*current)(); };
     static const Extra extras[] = {
         {"WQM", Shader::Toggles::WholeQuadMode},
@@ -590,7 +593,7 @@ void FixesSection() {
     };
     static_assert(sizeof(extras) / sizeof(extras[0]) == TlgSettings::kExtraPrefs);
     if (BeginRows("##extras")) {
-        static const char* const choices[] = {TL("Default", "Padrão"), TL("Off", "Desligado"), TL("On", "Ligado")};
+        static const char* const choices[] = {TL("Default", "PadrÃ£o"), TL("Off", "Desligado"), TL("On", "Ligado")};
         static const int values[] = {-1, 0, 1};
         for (int e = 0; e < TlgSettings::kExtraPrefs; ++e) {
             char label[64];
@@ -600,7 +603,7 @@ void FixesSection() {
                                             : "");
             ChoiceRow(label, s.extra_pref[e], choices, values, 3,
                       TL("Read once at start; saved in tlg.ini and applied on the next start.",
-                         "Lida uma vez ao iniciar; gravada no tlg.ini e aplicada na próxima partida."));
+                         "Lida uma vez ao iniciar; gravada no tlg.ini e aplicada na prÃ³xima partida."));
         }
         ImGui::EndTable();
     }
@@ -615,25 +618,25 @@ void ControlsTab() {
     // mode are fixed unless TLG_KEY_MAP / TLG_MOUSE_PAD_* (or tlg.ini key_map) change them.
     ImGui::SeparatorText(TL("Mouse", "Mouse"));
     if (BeginRows("##mouse")) {
-        CheckRow(TL("Mouse turns the camera", "Mouse gira a câmera"), s.mouse_enabled,
+        CheckRow(TL("Mouse turns the camera", "Mouse gira a cÃ¢mera"), s.mouse_enabled,
                  TL("The game window takes the mouse while it has focus. Esc releases it; a click in the window takes it back.",
                     "A janela do jogo prende o mouse enquanto tem o foco. Esc solta; um clique na janela prende de novo."));
         ImGui::BeginDisabled(!s.mouse_enabled);
         FloatRow(TL("Sensitivity", "Sensibilidade"), s.mouse_sensitivity, 0.1f, 5.0f, "%.2f",
-                 TL("How far the camera turns for the same mouse movement.", "Quanto a câmera gira para o mesmo movimento do mouse."));
+                 TL("How far the camera turns for the same mouse movement.", "Quanto a cÃ¢mera gira para o mesmo movimento do mouse."));
         CheckRow(TL("Invert Y axis", "Inverter eixo Y"), s.mouse_invert_y,
                  TL("Moving the mouse forward looks down.", "Empurrar o mouse para frente olha para baixo."));
-        FloatRow(TL("Smoothing", "Suavização"), s.mouse_smoothing, 0.0f, 0.9f, "%.2f",
+        FloatRow(TL("Smoothing", "SuavizaÃ§Ã£o"), s.mouse_smoothing, 0.0f, 0.9f, "%.2f",
                  TL("Evens out the camera motion; higher values feel softer and a little slower.",
-                    "Deixa o movimento da câmera mais uniforme; valores altos ficam mais suaves e um pouco mais lentos."));
-        FloatRow(TL("Acceleration", "Aceleração"), s.mouse_accel, 0.0f, 2.0f, "%.2f",
-                 TL("Fast movements turn more than slow ones. 0 is linear.", "Movimentos rápidos giram mais que os lentos. 0 é linear."));
+                    "Deixa o movimento da cÃ¢mera mais uniforme; valores altos ficam mais suaves e um pouco mais lentos."));
+        FloatRow(TL("Acceleration", "AceleraÃ§Ã£o"), s.mouse_accel, 0.0f, 2.0f, "%.2f",
+                 TL("Fast movements turn more than slow ones. 0 is linear.", "Movimentos rÃ¡pidos giram mais que os lentos. 0 Ã© linear."));
         FloatRow(TL("Anti-dead zone", "Anti-zona morta"), s.mouse_deadzone, 0.0f, 0.5f, "%.2f",
                  TL("Small mouse movements skip the game's stick dead zone. Raise it if slow movements do nothing.",
-                    "Movimentos pequenos do mouse pulam a zona morta do analógico do jogo. Aumente se movimentos lentos não fizerem nada."));
+                    "Movimentos pequenos do mouse pulam a zona morta do analÃ³gico do jogo. Aumente se movimentos lentos nÃ£o fizerem nada."));
         ImGui::EndDisabled();
         InfoRow(TL("Left / right / middle", "Esquerdo / direito / do meio"), "R2 / L2 / R3");
-        InfoRow(TL("Touchpad mode", "Modo touchpad"), TL("hold Left Ctrl or Mouse X1", "segure Ctrl esquerdo ou botão X1 do mouse"));
+        InfoRow(TL("Touchpad mode", "Modo touchpad"), TL("hold Left Ctrl or Mouse X1", "segure Ctrl esquerdo ou botÃ£o X1 do mouse"));
         InfoRow(TL("In touchpad mode", "No modo touchpad"),
                 TL("left touch/click/drag, middle touch, right two fingers", "esquerdo toca/clica/arrasta, do meio toca, direito dois dedos"));
         InfoRow(TL("Release the mouse", "Soltar o mouse"), "Esc");
@@ -648,10 +651,10 @@ void ControlsTab() {
     if (BeginRows("##sensor")) {
         SliderRow(TL("Graffiti aiming speed", "Velocidade da mira do grafite"), s.sensor_aim, 25, 200, "%d%%",
                   TL("How fast the stick moves the graffiti cursor in sensor mode (100% = default).",
-                     "Quão rápido o analógico move o cursor do grafite no modo sensor (100% = padrão)."));
+                     "QuÃ£o rÃ¡pido o analÃ³gico move o cursor do grafite no modo sensor (100% = padrÃ£o)."));
         ImGui::EndTable();
     }
-    if (ImGui::Button(TL("How to do the graffiti without a gyro", "Como fazer o grafite sem giroscópio"))) {
+    if (ImGui::Button(TL("How to do the graffiti without a gyro", "Como fazer o grafite sem giroscÃ³pio"))) {
         SetOpen(false);
         OpenGuide();
     }
@@ -671,7 +674,7 @@ void OverlayTab() {
     if (ImGui::BeginTable("##overlay_items", 2, ImGuiTableFlags_SizingStretchProp)) {
         ImGui::TableNextColumn();
         static const char* const names[] = {"FPS", TL("Frametime", "Tempo de quadro"), "Upscaler", TL("GPU (name and use)", "GPU (nome e uso)"), TL("CPU (game)", "CPU (jogo)"),
-                                            TL("RAM (game / total)", "RAM (jogo / total)"), TL("VRAM (used / available)", "VRAM (usada / disponível)")};
+                                            TL("RAM (game / total)", "RAM (jogo / total)"), TL("VRAM (used / available)", "VRAM (usada / disponÃ­vel)")};
         for (unsigned item = 0; item < 7; ++item) {
             const unsigned bit = 1u << item;
             bool on = (s.overlay_items & bit) != 0;
@@ -681,7 +684,7 @@ void OverlayTab() {
             }
         }
         ImGui::TableNextColumn();
-        ImGui::TextDisabled(TL("Preview", "Prévia"));
+        ImGui::TextDisabled(TL("Preview", "PrÃ©via"));
         ImGui::BeginChild("##preview", ImVec2(0, 0), ImGuiChildFlags_Borders | ImGuiChildFlags_AutoResizeY);
         ImGui::SetWindowFontScale(s.overlay_scale / 100.0f);
         const std::string text = OverlayText();
@@ -690,14 +693,14 @@ void OverlayTab() {
         ImGui::EndChild();
         ImGui::EndTable();
     }
-    ImGui::SeparatorText(TL("Appearance", "Aparência"));
+    ImGui::SeparatorText(TL("Appearance", "AparÃªncia"));
     if (BeginRows("##appearance")) {
         SliderRow(TL("Font size", "Tamanho da fonte"), s.overlay_scale, 50, 300, "%d%%", TL("Size of the overlay text.", "Tamanho do texto do overlay."));
         static const char* const corners[] = {TL("Top left", "Superior esquerdo"), TL("Top right", "Superior direito"), TL("Bottom left", "Inferior esquerdo"), TL("Bottom right", "Inferior direito")};
         ChoiceRow(TL("Corner", "Canto"), s.overlay_corner, corners, nullptr, 4, TL("Where the overlay sits.", "Onde o overlay fica."));
-        SliderRow(TL("Background opacity", "Opacidade do fundo"), s.overlay_opacity, 0, 100, "%d%%", TL("0% is no background.", "0% é sem fundo."));
+        SliderRow(TL("Background opacity", "Opacidade do fundo"), s.overlay_opacity, 0, 100, "%d%%", TL("0% is no background.", "0% Ã© sem fundo."));
         static const char* const layouts[] = {TL("One line", "Uma linha"), TL("One item per line", "Um item por linha")};
-        ChoiceRow(TL("Layout", "Disposição"), s.overlay_layout, layouts, nullptr, 2, TL("Items side by side or stacked.", "Itens lado a lado ou empilhados."));
+        ChoiceRow(TL("Layout", "DisposiÃ§Ã£o"), s.overlay_layout, layouts, nullptr, 2, TL("Items side by side or stacked.", "Itens lado a lado ou empilhados."));
         ImGui::EndTable();
     }
     ImGui::EndDisabled();
@@ -748,7 +751,7 @@ void Menu() {
         return;
     }
     footer_help = nullptr;
-    constexpr int TabCount = 4;
+    constexpr int TabCount = 5;
     const ImGuiIO& io = ImGui::GetIO();
     if (!io.WantTextInput) {
         const int step = ImGui::IsKeyPressed(ImGuiKey_GamepadR1, false) || ImGui::IsKeyPressed(ImGuiKey_E, false) ? 1
@@ -762,7 +765,7 @@ void Menu() {
     const float footer = ImGui::GetFrameHeightWithSpacing() * 2.0f + ImGui::GetTextLineHeightWithSpacing() * 2.0f;
     if (ImGui::BeginTabBar("##tabs")) {
         static const char* const tabs[TabCount] = {"Overlay", TL("Image", "Imagem"), TL("Performance", "Desempenho"),
-                                                   TL("Controls", "Controle")};
+                                                   TL("Controls", "Controle"), "Karma"};
         for (int tab = 0; tab < TabCount; ++tab) {
             const ImGuiTabItemFlags flags = requested_tab == tab ? ImGuiTabItemFlags_SetSelected : 0;
             if (!ImGui::BeginTabItem(tabs[tab], nullptr, flags)) {
@@ -777,6 +780,7 @@ void Menu() {
                 case 1: ImageTab(); break;
                 case 2: PerformanceTab(); break;
                 case 3: ControlsTab(); break;
+                case 4: TlgKarmaMenu(); break;
                 default: OverlayTab(); break;
                 }
             }
@@ -797,9 +801,9 @@ void Menu() {
                               : TL(PadText("L1 / R1 or Q / E: switch tabs. Settings are saved in tlg.ini.",
                                            "LB / RB or Q / E: switch tabs. Settings are saved in tlg.ini.",
                                            "L / R or Q / E: switch tabs. Settings are saved in tlg.ini."),
-                                   PadText("L1 / R1 ou Q / E: trocar de aba. As configurações ficam salvas em tlg.ini.",
-                                           "LB / RB ou Q / E: trocar de aba. As configurações ficam salvas em tlg.ini.",
-                                           "L / R ou Q / E: trocar de aba. As configurações ficam salvas em tlg.ini.")));
+                                   PadText("L1 / R1 ou Q / E: trocar de aba. As configuraÃ§Ãµes ficam salvas em tlg.ini.",
+                                           "LB / RB ou Q / E: trocar de aba. As configuraÃ§Ãµes ficam salvas em tlg.ini.",
+                                           "L / R ou Q / E: trocar de aba. As configuraÃ§Ãµes ficam salvas em tlg.ini.")));
     ImGui::PopTextWrapPos();
     if (const int changes = RestartChanges()) {
         ImGui::TextColored(ImVec4(0.85f, 0.72f, 0.45f, 1.0f), "%d change%s need%s a restart (unsaved progress is lost).",
@@ -898,7 +902,7 @@ void TextEntryBox() {
     ImGui::Separator();
     ImGui::TextDisabled("Keyboard: type, Backspace to erase, Enter = OK, Esc = cancel");
     ImGui::TextDisabled("%s", TL(PadText("Controller: Cross (A) = OK, Circle (B) = cancel", "Controller: A = OK, B = cancel", "Controller: B = OK, A = cancel"),
-                                 PadText("Controle: Xis (A) = OK, Círculo (B) = cancelar", "Controle: A = OK, B = cancelar", "Controle: B = OK, A = cancelar")));
+                                 PadText("Controle: Xis (A) = OK, CÃ­rculo (B) = cancelar", "Controle: A = OK, B = cancelar", "Controle: B = OK, A = cancelar")));
     ImGui::End();
 }
 
@@ -1033,13 +1037,13 @@ std::string SaveWhen(s64 mtime) {
 #endif
     char out[64];
     if (UiPortuguese()) {
-        std::snprintf(out, sizeof(out), "%02d/%02d/%04d · %02d:%02d", tm.tm_mday, tm.tm_mon + 1,
+        std::snprintf(out, sizeof(out), "%02d/%02d/%04d Â· %02d:%02d", tm.tm_mday, tm.tm_mon + 1,
                       tm.tm_year + 1900, tm.tm_hour, tm.tm_min);
     } else {
         static const char* months[] = {"Jan", "Mar", "Apr", "May", "Jun",
                                        "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
         const int hour = tm.tm_hour % 12 ? tm.tm_hour % 12 : 12;
-        std::snprintf(out, sizeof(out), "%s %d, %d · %d:%02d %s", months[tm.tm_mon % 12], tm.tm_mday,
+        std::snprintf(out, sizeof(out), "%s %d, %d Â· %d:%02d %s", months[tm.tm_mon % 12], tm.tm_mday,
                       tm.tm_year + 1900, hour, tm.tm_min, tm.tm_hour < 12 ? "AM" : "PM");
     }
     return out;
@@ -1053,16 +1057,16 @@ std::string SaveAgo(s64 mtime) {
     if (seconds < 60) return pt ? "agora mesmo" : "just now";
     if (seconds < 3600) {
         const int m = int(seconds / 60);
-        std::snprintf(out, sizeof(out), pt ? (m == 1 ? "há %d minuto" : "há %d minutos")
+        std::snprintf(out, sizeof(out), pt ? (m == 1 ? "hÃ¡ %d minuto" : "hÃ¡ %d minutos")
                                            : (m == 1 ? "%d minute ago" : "%d minutes ago"), m);
     } else if (seconds < 86400) {
         const int h = int(seconds / 3600);
-        std::snprintf(out, sizeof(out), pt ? (h == 1 ? "há %d hora" : "há %d horas")
+        std::snprintf(out, sizeof(out), pt ? (h == 1 ? "hÃ¡ %d hora" : "hÃ¡ %d horas")
                                            : (h == 1 ? "%d hour ago" : "%d hours ago"), h);
     } else {
         const int d = int(seconds / 86400);
         if (d == 1) return pt ? "ontem" : "yesterday";
-        std::snprintf(out, sizeof(out), pt ? "há %d dias" : "%d days ago", d);
+        std::snprintf(out, sizeof(out), pt ? "hÃ¡ %d dias" : "%d days ago", d);
     }
     return out;
 }
@@ -1112,12 +1116,12 @@ void SaveCard(const SavePainter& p, float x0, float y0, float x1, const SaveRow&
     when = SaveWhen(row.mtime);
     ago = SaveAgo(row.mtime);
     const std::string size = SaveSize(row.bytes);
-    if (!size.empty()) ago = ago.empty() ? size : ago + " · " + size;
+    if (!size.empty()) ago = ago.empty() ? size : ago + " Â· " + size;
     const float right = x1 - 16;
     const float right_w = std::max(p.Width(14.0f, when), p.Width(12.5f, ago));
     const float text_w = right - text_x - (right_w > 0 ? right_w + 20 : 0);
     std::string line = row.subtitle;
-    if (!row.detail.empty()) line = line.empty() ? row.detail : line + " · " + row.detail;
+    if (!row.detail.empty()) line = line.empty() ? row.detail : line + " Â· " + row.detail;
     for (char& c : line) if (c == '\n' || c == '\r') c = ' ';
     p.Text(text_x, y0 + h / 2 - 20, 17.0f, kSaveText, p.Fit(17.0f, row.title, text_w), true);
     p.Text(text_x, y0 + h / 2 + 4, 13.5f, kSaveMuted, p.Fit(13.5f, line, text_w));
@@ -1144,7 +1148,7 @@ void SaveListBox() {
     const int saves = count - int(std::count_if(save_rows.begin(), save_rows.end(), [](const SaveRow& r) { return r.is_new; }));
     char sub[160];
     const char* game = std::getenv("TLG_APP_NAME");
-    std::snprintf(sub, sizeof(sub), "%s%s%d %s", game && *game ? game : "", game && *game ? " · " : "", saves,
+    std::snprintf(sub, sizeof(sub), "%s%s%d %s", game && *game ? game : "", game && *game ? " Â· " : "", saves,
                   saves == 1 ? "save" : "saves");
     p.Text(70, 48, 13.0f, kSaveDim, sub);
     p.Line(0, header_h, w, header_h, kSaveLine, 1.0f);
@@ -1178,7 +1182,7 @@ void SaveListBox() {
     p.Button(x, fy + footer_h / 2, 1);
     p.Text(x + 18, fy + footer_h / 2 - 9, 13.5f, 0xb8c2d3, TL("Back", "Voltar"));
     p.TextRight(w - 28, fy + footer_h / 2 - 8, 12.5f, 0x7f8ba0,
-                TL("Enter / click: choose · Esc / right click: back", "Enter / clique: escolher · Esc / botão direito: voltar"));
+                TL("Enter / click: choose Â· Esc / right click: back", "Enter / clique: escolher Â· Esc / botÃ£o direito: voltar"));
 }
 
 // The message's words for a system message type (sceSaveDataDialog), the game's own text or an
@@ -1194,27 +1198,27 @@ SaveMessageWords SaveMessageFor(int kind, int code, u64 value, const std::string
     switch (code) {
     case 1:
         return {TL("No saved data", "Nenhum save encontrado"),
-                TL("There is no saved data to load.", "Não há nenhum save para carregar."), 0, false};
+                TL("There is no saved data to load.", "NÃ£o hÃ¡ nenhum save para carregar."), 0, false};
     case 2:
         if (kind == 2) return {TL("Load this save?", "Carregar este save?"),
-                               TL("Progress that was not saved will be lost.", "O progresso não salvo será perdido."), 1, false};
+                               TL("Progress that was not saved will be lost.", "O progresso nÃ£o salvo serÃ¡ perdido."), 1, false};
         if (kind == 3) return {TL("Delete this save?", "Excluir este save?"),
-                               TL("This cannot be undone.", "Não dá para desfazer."), 1, true};
-        return {TL("Save the game?", "Salvar o jogo?"), TL("A new save will be created.", "Um save novo será criado."), 1, false};
+                               TL("This cannot be undone.", "NÃ£o dÃ¡ para desfazer."), 1, true};
+        return {TL("Save the game?", "Salvar o jogo?"), TL("A new save will be created.", "Um save novo serÃ¡ criado."), 1, false};
     case 3:
         return {TL("Overwrite this save?", "Sobrescrever este save?"),
                 TL("The current progress will replace this save. This cannot be undone.",
-                   "O progresso atual vai substituir este save. Não dá para desfazer."), 1, true};
+                   "O progresso atual vai substituir este save. NÃ£o dÃ¡ para desfazer."), 1, true};
     case 4:
     case 8:
-        return {TL("Not enough space", "Sem espaço suficiente"),
-                TL("Free some disk space and try again.", "Libere espaço no disco e tente de novo."), 0, true};
+        return {TL("Not enough space", "Sem espaÃ§o suficiente"),
+                TL("Free some disk space and try again.", "Libere espaÃ§o no disco e tente de novo."), 0, true};
     case 6:
-        return {TL("This save is damaged", "Este save está corrompido"),
-                TL("It cannot be used.", "Não dá para usar este save."), 0, true};
+        return {TL("This save is damaged", "Este save estÃ¡ corrompido"),
+                TL("It cannot be used.", "NÃ£o dÃ¡ para usar este save."), 0, true};
     case 10:
         return {TL("A damaged save was found", "Um save corrompido foi encontrado"),
-                TL("It was deleted.", "Ele foi excluído."), 0, true};
+                TL("It was deleted.", "Ele foi excluÃ­do."), 0, true};
     case 11:
         return {TL("A damaged save was found", "Um save corrompido foi encontrado"),
                 TL("A new save was created in its place.", "Um save novo foi criado no lugar."), 0, true};
@@ -1222,13 +1226,13 @@ SaveMessageWords SaveMessageFor(int kind, int code, u64 value, const std::string
         return {TL("A damaged save was found", "Um save corrompido foi encontrado"),
                 TL("It was restored.", "Ele foi restaurado."), 0, true};
     case 14:
-        return {TL("The saves are too large", "Os saves estão grandes demais"),
+        return {TL("The saves are too large", "Os saves estÃ£o grandes demais"),
                 TL("Delete some saves and try again.", "Exclua alguns saves e tente de novo."), 0, true};
     case 100:
         return {SaveTitle(kind), text, 0, false};
     case 101: {
         char body[96];
-        std::snprintf(body, sizeof(body), pt ? "Código do erro: 0x%08X" : "Error code: 0x%08X", unsigned(value));
+        std::snprintf(body, sizeof(body), pt ? "CÃ³digo do erro: 0x%08X" : "Error code: 0x%08X", unsigned(value));
         return {TL("Save data error", "Erro nos dados salvos"), body, 0, true};
     }
     default:
@@ -1270,7 +1274,7 @@ void SaveMessageBox() {
         p.Picture(pad + 14, y + 12, 112, 63, SaveTexture(0), message_entry.is_new);
         const float tx = pad + 14 + 112 + 16, tw = w - pad - 14 - tx;
         std::string line = message_entry.subtitle;
-        if (!message_entry.detail.empty()) line = line.empty() ? message_entry.detail : line + " · " + message_entry.detail;
+        if (!message_entry.detail.empty()) line = line.empty() ? message_entry.detail : line + " Â· " + message_entry.detail;
         for (char& c : line) if (c == '\n' || c == '\r') c = ' ';
         std::string when = SaveWhen(message_entry.mtime);
         const std::string ago = SaveAgo(message_entry.mtime);
@@ -1288,7 +1292,7 @@ void SaveMessageBox() {
 
     // Buttons, right-aligned: [no/cancel] [yes/OK]; the focused one is filled.
     const char* yes = buttons == 1 ? TL("Yes", "Sim") : "OK";
-    const char* no = buttons == 1 ? TL("No", "Não") : TL("Cancel", "Cancelar");
+    const char* no = buttons == 1 ? TL("No", "NÃ£o") : TL("Cancel", "Cancelar");
     const bool two = buttons == 1 || buttons == 3;
     if (!two) message_focus = 1;
     float right = w - pad;
@@ -1320,7 +1324,7 @@ void SaveProgressBox(SaveClock::time_point now) {
                         : progress_kind == 3 ? TL("Deleting...", "Excluindo...")
                                              : TL("Saving...", "Salvando...");
     p.Text(66, 20, 21.0f, kSaveText, title, true);
-    p.Text(66, 47, 13.0f, kSaveDim, TL("Do not close the game.", "Não feche o jogo."));
+    p.Text(66, 47, 13.0f, kSaveDim, TL("Do not close the game.", "NÃ£o feche o jogo."));
     const float bx0 = 28, bx1 = w - 28, by = 84;
     p.Box(bx0, by, bx1, by + 10, kSaveThumb, 5.0f);
     if (progress_percent >= 0) {
@@ -1344,7 +1348,7 @@ void SaveProgressBox(SaveClock::time_point now) {
 void SaveToastBox(SaveClock::time_point now) {
     const ImGuiViewport* viewport = ImGui::GetMainViewport();
     const char* text = toast_kind == 2 ? TL("Save loaded", "Save carregado")
-                       : toast_kind == 3 ? TL("Save deleted", "Save excluído")
+                       : toast_kind == 3 ? TL("Save deleted", "Save excluÃ­do")
                                          : TL("Game saved", "Jogo salvo");
     const float in = std::chrono::duration<float>(now - toast_since).count();
     const float out = std::chrono::duration<float>(toast_until - now).count();
@@ -1370,13 +1374,13 @@ ImRect guide_button_rect;
 void GuideBox() {
     const bool pt = UiPortuguese();
     const char* sticks = PadText("L3+R3", "LS+RS", "LS+RS");
-    const char* shake = PadText(pt ? "✕ (Xis)" : "✕ (cross)", "A", "B");
+    const char* shake = PadText(pt ? "âœ• (Xis)" : "âœ• (cross)", "A", "B");
     const char* spray = PadText("R2", "RT", "ZR");
     char steps[4][200];
-    std::snprintf(steps[0], sizeof(steps[0]), pt ? "Toque em %s juntos: liga o modo sensor e a lata já fica de lado."
+    std::snprintf(steps[0], sizeof(steps[0]), pt ? "Toque em %s juntos: liga o modo sensor e a lata jÃ¡ fica de lado."
                                                  : "Tap %s together: sensor mode turns on and the can is held sideways.", sticks);
     std::snprintf(steps[1], sizeof(steps[1]), pt ? "Segure %s para sacudir a lata." : "Hold %s to shake the can.", shake);
-    std::snprintf(steps[2], sizeof(steps[2]), pt ? "Segure %s para pintar e mire com o analógico esquerdo (pouco inclinado vai devagar)."
+    std::snprintf(steps[2], sizeof(steps[2]), pt ? "Segure %s para pintar e mire com o analÃ³gico esquerdo (pouco inclinado vai devagar)."
                                                  : "Hold %s to spray and aim with the left stick (a small push is slow).", spray);
     std::snprintf(steps[3], sizeof(steps[3]), pt ? "Toque em %s de novo para voltar a andar." : "Tap %s again to walk again.", sticks);
     const char* keys = TL("Keyboard: hold T or G (can sideways), Y shakes, F sprays, the arrow keys aim.",
@@ -1401,10 +1405,10 @@ void GuideBox() {
     SavePainter p = SavePainterFor(w, h);
     p.Panel(w, h);
     float y = pad;
-    p.Text(pad, y, 23.0f, kSaveText, TL("Graffiti without a gyro", "Grafite sem giroscópio"), true);
+    p.Text(pad, y, 23.0f, kSaveText, TL("Graffiti without a gyro", "Grafite sem giroscÃ³pio"), true);
     y += 30 + 8;
     p.Text(pad, y, 14.0f, kSaveMuted, TL("No motion sensor on your controller? Use sensor mode:",
-                                         "Seu controle não tem sensor de movimento? Use o modo sensor:"));
+                                         "Seu controle nÃ£o tem sensor de movimento? Use o modo sensor:"));
     y += 20 + 22;
     for (int i = 0; i < 4; ++i) {
         const ImVec2 c = p.P(pad + 13, y + 11);
@@ -1432,12 +1436,12 @@ void GuideBox() {
 void OpenGuide() {
     guide_button_rect = ImRect();
     guide_active = true;
-    ImGui::GetIO().MouseDrawCursor = true;
+    overlay_context->IO.MouseDrawCursor = true;
 }
 
 void CloseGuide() {
     guide_active = false;
-    ImGui::GetIO().MouseDrawCursor = menu_open;
+    overlay_context->IO.MouseDrawCursor = menu_open;
     auto& s = TlgSettings::Get();
     if (!s.graffiti_guide_seen.exchange(true)) {
         TlgSettings::Save();
@@ -1478,7 +1482,7 @@ void LoadingScreen() {
     ImGui::SetWindowFontScale(1.6f);
     ImGui::TextUnformatted(compile ? TL("Compiling shaders...", "Compilando shaders...")
                            : total ? TL("Loading shader cache...", "Carregando o cache de shaders...")
-                                   : TL("Preparing graphics...", "Preparando os gráficos..."));
+                                   : TL("Preparing graphics...", "Preparando os grÃ¡ficos..."));
     ImGui::SetWindowFontScale(1.0f);
     if (total) {
         char count[64];
@@ -1496,10 +1500,10 @@ void LoadingScreen() {
     ImGui::PushTextWrapPos(0.0f);
     ImGui::TextDisabled("%s", compile ? TL("Only on the first start on this computer and after updates: "
                                            "then the game runs without compiling shaders.",
-                                           "Só na primeira abertura neste computador e depois de "
-                                           "atualizações: depois o jogo roda sem compilar shaders.")
+                                           "SÃ³ na primeira abertura neste computador e depois de "
+                                           "atualizaÃ§Ãµes: depois o jogo roda sem compilar shaders.")
                                       : TL("The first start after an update takes longer.",
-                                           "A primeira abertura depois de uma atualização demora mais."));
+                                           "A primeira abertura depois de uma atualizaÃ§Ã£o demora mais."));
     ImGui::PopTextWrapPos();
     ImGui::End();
 }
@@ -1763,7 +1767,7 @@ bool HandleGuideEvent(const SDL_Event& event) {
 
 void FinishSaveDialog() {
     RetireChoiceTextures();
-    ImGui::GetIO().MouseDrawCursor = menu_open;
+    overlay_context->IO.MouseDrawCursor = menu_open;
 }
 
 // The save list and messages take the keys, buttons and mouse that answer them; the rest stays

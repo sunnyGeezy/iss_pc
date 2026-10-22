@@ -14,6 +14,8 @@
 #include "actor_hook.h"
 #include "damage_hook.h"
 #include "view_hook.h"
+#include "iss_camera_hook.h"
+#include "iss_camera_pitch_hook.h"
 #include "gpu/tlggpu.h"
 #if !defined(__x86_64__) || !defined(__GNUC__)
 #error This prototype requires x86-64 GCC or Clang (including MinGW).
@@ -742,6 +744,90 @@ static void install_view_tuning(Segment *segments, uint64_t count, uint64_t size
     printf("Draw distance: ready (LOD scale, LOD bands, region LOD_ADJUST and FADE_DISTANCE, near/far clip)\n");
 }
 
+/* Opt-in, build/signature-guarded inFAMOUS camera angular-speed limits.
+ * Installation runs after ISA/red-zone rewriting, before guest threads start. */
+
+#include "iss_karma.h"
+#include "iss_karma_signatures.h"
+static void install_iss_karma(const char *app0,Segment *segments,uint64_t count,uint64_t size){
+    char path[4096],serial[32]="",version[32]="";
+    snprintf(path,sizeof(path),"%s/sce_sys/param.sfo",app0 ? app0 : ".");
+    sfo_value(path,"TITLE_ID",serial,sizeof(serial),NULL);sfo_value(path,"APP_VER",version,sizeof(version),NULL);
+    if(strcmp(serial,"CUSA00223") || strcmp(version,"01.07"))return;
+    int executable=0;
+    for(uint64_t i=0;i<count;++i)if((segments[i].flags&1) && ISS_KARMA_SITE>=segments[i].address && ISS_KARMA_SITE+ISS_KARMA_STOLEN<=segments[i].address+segments[i].size)executable=1;
+    if(!executable)return;
+    if(!iss_karma_signatures(image,size))return;
+    unsigned char *bridge=allocate(page_size);
+    unsigned n=iss_karma_bridge(bridge,(uintptr_t)runtime_karma_tick,image+ISS_KARMA_SITE,(uintptr_t)image+ISS_KARMA_SITE+ISS_KARMA_STOLEN);
+    if(n>page_size)fail("karma bridge overflow");
+    protect(bridge,page_size,5);memset(image+ISS_KARMA_SITE,0x90,ISS_KARMA_STOLEN);
+    iss_karma_jump(image+ISS_KARMA_SITE,(uintptr_t)bridge);runtime_karma_attach(image);
+    puts("Karma switcher: supported CUSA00223 01.07 (normal game functions, game-thread queue)");
+}
+
+static void install_iss_camera_speed(const char *app0, Segment *segments, uint64_t count, uint64_t size) {
+    float pan, tilt;
+    if (!iss_camera_scale(getenv("ISS_CAMERA_PAN_SCALE"), &pan) ||
+        !iss_camera_scale(getenv("ISS_CAMERA_TILT_SCALE"), &tilt)) {
+        puts("Camera speed: disabled (scale must be a finite number from 0.25 to 4)");
+        return;
+    }
+    if (pan == 1.0f && tilt == 1.0f) return;
+    char path[4096], serial[32] = "", version[32] = "";
+    snprintf(path, sizeof(path), "%s/sce_sys/param.sfo", app0 ? app0 : ".");
+    sfo_value(path, "TITLE_ID", serial, sizeof(serial), NULL);
+    sfo_value(path, "APP_VER", version, sizeof(version), NULL);
+    int executable = 0;
+    for (uint64_t i=0; i<count; ++i)
+        if ((segments[i].flags & 1) && segments[i].address <= ISS_CAMERA_SITE &&
+            ISS_CAMERA_SITE-segments[i].address <= segments[i].size &&
+            ISS_CAMERA_LENGTH <= segments[i].size-(ISS_CAMERA_SITE-segments[i].address)) executable = 1;
+    if (strcmp(serial,"CUSA00223") || strcmp(version,"01.07") || !executable ||
+        !iss_camera_signature_match(image,size)) {
+        puts("Camera speed: disabled (title/version or original-code signature mismatch)");
+        return;
+    }
+    unsigned char *stub = allocate(page_size);
+    iss_camera_build_stub(stub,(uintptr_t)(image+ISS_CAMERA_SITE+ISS_CAMERA_LENGTH),pan,tilt);
+    protect(stub,page_size,5);
+    iss_camera_build_jump(image+ISS_CAMERA_SITE,(uintptr_t)stub);
+    printf("Camera speed: horizontal %.3gx, vertical %.3gx (angular limits; adaptive gain unchanged)\n",pan,tilt);
+}
+
+static void report_iss_pitch(void) {
+    printf("Camera pitch safeguard: calls=%" PRIu64 " changes=%" PRIu64
+           " last input=%.4g,%.4g pitch=%.4g zoom=%.4g cap=%.4g->%.4g\n",
+           iss_pitch_stats.calls,iss_pitch_stats.changed,iss_pitch_stats.last_x,
+           iss_pitch_stats.last_y,iss_pitch_stats.last_pitch,iss_pitch_stats.last_zoom,
+           iss_pitch_stats.last_cap,iss_pitch_stats.last_result);
+}
+static void install_iss_pitch_safeguard(const char *app0, Segment *segments, uint64_t count, uint64_t size) {
+    const char *enabled=getenv("ISS_CAMERA_PREVENT_PITCH_SLOWDOWN");
+    if (!enabled || strcmp(enabled,"1")) return;
+    char path[4096],serial[32]="",version[32]="";
+    snprintf(path,sizeof(path),"%s/sce_sys/param.sfo",app0 ? app0 : ".");
+    sfo_value(path,"TITLE_ID",serial,sizeof(serial),NULL);
+    sfo_value(path,"APP_VER",version,sizeof(version),NULL);
+    int executable=0;
+    for (uint64_t i=0;i<count;++i)
+        if ((segments[i].flags&1) && segments[i].address<=ISS_PITCH_SITE &&
+            ISS_PITCH_SITE-segments[i].address<=segments[i].size &&
+            ISS_PITCH_LENGTH<=segments[i].size-(ISS_PITCH_SITE-segments[i].address)) executable=1;
+    if (strcmp(serial,"CUSA00223") || strcmp(version,"01.07") || !executable ||
+        !iss_pitch_signature(image,size)) {
+        puts("Camera pitch safeguard: disabled (title/version or signature mismatch)");return;
+    }
+    unsigned char *stub=allocate(page_size);
+    unsigned length=iss_pitch_build_stub(stub,(uintptr_t)&iss_pitch_cap,
+                                        (uintptr_t)(image+ISS_PITCH_SITE+ISS_PITCH_LENGTH));
+    if (length>ISS_PITCH_MAX_STUB || length>page_size) fail("camera pitch stub overflow");
+    protect(stub,page_size,5);
+    iss_pitch_build_jump(image+ISS_PITCH_SITE,(uintptr_t)stub);
+    atexit(report_iss_pitch);
+    puts("Camera pitch safeguard: enabled (unzoomed full diagonal at pitch limit only)");
+}
+
 /* G3PATCH2 (patches.py): the patches' image base, then byte writes at image offsets, applied
  * after relocation. A write may replace a whole base-relative pointer slot (60/90 FPS++ swap
  * function pointers): the patch holds the address at the patches' base, rebased here. */
@@ -1312,6 +1398,10 @@ int main(int argc, char **argv) {
         runtime_set_report_hook(isa_report_hook);
         protect(stubs, stub_area + red_zone_area, 5);
     }
+    if (gpu_enabled) install_iss_camera_speed(app0, segments, ns, size);
+    if (gpu_enabled) install_iss_pitch_safeguard(app0, segments, ns, size);
+    /* Camera compatibility checks cover this function before its entry is hooked. */
+    if (gpu_enabled) install_iss_karma(app0, segments, ns, size);
     protect(traps, round_page((import_count + 1) * 32), 5);
     if (trace_stubs) protect(trace_stubs, round_page((import_count + 1) * TRACE_STUB_SIZE), 5);
     protect(image, round_page(size), 0);
