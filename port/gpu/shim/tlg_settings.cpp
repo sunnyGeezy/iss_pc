@@ -163,6 +163,8 @@ void Set(Values& v, const std::string& key, const std::string& value) {
         v.iss_native_percent = std::clamp(i,25,200);
     } else if (key == "iss_native_hud_edges") {
         v.iss_native_hud_edges = i != 0;
+    } else if (key == "iss_native_ui_16_9") {
+        v.iss_native_ui_16_9 = i == 1;
     } else if (key == "render_resolution") {
         v.render_resolution = TlgGraphics::ParseResolution(value);
     } else if (key == "engine_fps") {
@@ -357,6 +359,7 @@ void Save() {
     std::fprintf(file, "output_res=%dx%d\n", OutputWidths[v.output_res], OutputHeights[v.output_res]);
     std::fprintf(file, "iss_native_output=%d\niss_native_percent=%d\niss_native_hud_edges=%d\n",
                  v.iss_native_output.load(),v.iss_native_percent.load(),int(v.iss_native_hud_edges.load()));
+    std::fprintf(file, "iss_native_ui_16_9=%d\n",int(v.iss_native_ui_16_9.load()));
     std::fprintf(file, "red_orb_multiplier=%.3f\n", v.red_orb_multiplier.load());
     std::fprintf(file, "damage_dealt=%.3f\n", v.damage_dealt.load());
     std::fprintf(file, "damage_taken=%.3f\n", v.damage_taken.load());

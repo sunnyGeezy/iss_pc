@@ -116,6 +116,13 @@ int main() {
     v.display_mode=G::Windowed;
     TlgSettings::Load();
     assert(v.display_mode==G::ExclusiveFullscreen);
+    // Changing unrelated overlay settings must preserve the menu-canvas fix.
+    v.iss_native_ui_16_9=true;
+    TlgSettings::Save();
+    v.iss_native_ui_16_9=false;
+    TlgSettings::Load();
+    assert(v.iss_native_ui_16_9);
+    assert(Read(path).find("iss_native_ui_16_9=1\n")!=std::string::npos);
     std::remove(path);
     std::puts("PASS: graphics settings");
 }
