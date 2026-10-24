@@ -168,3 +168,72 @@ A bounded detailed GPU frame capture was triggered shortly before the report;
 its logging overhead is a possible confounder, not a confirmed explanation.
 The process remained responsive afterward and render counters kept advancing.
 Do not classify this as resolved stability or a confirmed deadlock recurrence.
+
+### HUD size diagnostic, not a completed per-layer fix
+
+User confirmed the minimap/power HUD appears larger in both dimensions. Local
+inspection reproduced the enlarged HUD. Diagnostic mode `iss_native_ui_16_9=2`
+keeps the menu canvas exactly 16:9 but expands its logical extent to at least
+the wide display's 1080-line logical width (multiples of 16x9). For 3440x1440
+this is 2592x1458; for 5120x1440 it is 3840x2160. Scene and output dimensions,
+world-camera aspect, camera controls and Karma hooks are unchanged.
+
+This is a shared-layout sizing experiment. It does NOT yet implement independent
+HUD/menu render layers or prove that all UI elements use a 1080p design scale.
+Visual checks must confirm HUD proportions, map/logo behavior and text legibility.
+Do not ship or describe this diagnostic as the completed requested HUD fix.
+
+Also fixed source settings persistence: `iss_native_ui_16_9` must survive overlay
+settings saves. Earlier installed/package binaries predate that fix. GitHub work
+was stopped at the user's request; no PR or release was created. Local HUD changes
+are not uploaded to GitHub.
+
+HUD diagnostic mode 2 FAILED the user visual check: minimap/power artwork was
+slightly smaller, but HUD elements moved toward the center and pause-map edge
+distortion returned. Screenshot: codex-clipboard-8bf7e7da-1d83-4da7-aad2-9d593b91ed02.png.
+Do not install/package this mode. The default runtime safe-area calculation also
+centers a 1920-wide region inside the expanded diagnostic canvas, explaining the
+inward anchors, but changing that alone cannot fix the map regression. The last
+map-correct baseline remains mode 1 (1920x1080 menu canvas) with enlarged gameplay
+HUD. The requested independent HUD transform remains unimplemented; do not label
+this shared-canvas diagnostic as a per-layer fix.
+
+HUD-layout observer first launch crashed in Borderless before a capture request:
+read of address 0x50 at nvoglv64.dll+0xdac501, thread 43536, process exit 3.
+There were no HUD_LAYOUT/HUD_NODE records. This identifies the fault location,
+not its cause; observer involvement is not excluded. Normal protected-file hash
+checks passed. Preserve work/hud-layout-diagnostic-crash.log and compare the same
+binary with observer installation disabled before attempting further captures.
+
+### Gameplay HUD corner candidate (local only)
+
+The bounded layout observer reached gameplay after appending the experimental
+settings field to preserve established renderer field offsets. This is not proof
+that field layout caused the earlier driver crashes. Logged three candidate roots:
+- karma emblem: vtable +0xd74668, owner vtable +0xcdb7d0, 140x200, flags 5;
+- power meter: same types, 424x280, flags 9;
+- minimap: vtable +0xd795d0, no owner, 330x430, flags 10.
+
+The candidate intercepts the completed-layout tail at US +0x565193 (17 verified
+bytes), guarding the layout entry/scale instructions and relocated vtable methods
+before installing. It filters exact types, ownership, dimensions and flags, then
+corrects horizontal excess stretch around +/-960 logical corner anchors. It keeps
+the original 1080-line vertical scale and leaves the shared menu canvas at
+1920x1080. Unmatched widgets and non-affine/nonfinite transforms pass unchanged.
+No widget asset, progression or input data is edited. The game uses affine 3x4
+matrices with unused W=0, which was captured and added to fixtures alongside W=1.
+
+Nine tests pass, including executable entry/exit bridge tests, target filtering,
+16:9 identity and 21:9/32:9 pixel proportions and corner-margin calculations.
+The initial transform candidate rejected the observed W=0 convention and made no
+HUD changes. The corrected local run logs matches for all three intended groups;
+the user confirms the HUD looks good, smaller, and texture quality remains high.
+Expanded-map/preview visual and navigation regression checks are pending.
+
+Current local run uses --no-driver-cache (BB_PIPELINE_CACHE=0), keeping shader
+translation caches and saves intact. Repeated startup failures were reads of 0x50
+at nvoglv64.dll+0xdac501, also reproduced with the observer disabled. One successful
+cache-disabled startup is not proof of a cache cause or a general crash fix.
+Normal installation and public ZIP still contain the previous map/menu version;
+this HUD candidate has not been installed, packaged or uploaded. GitHub work is
+stopped by user instruction.

@@ -19,12 +19,13 @@ import shutil
 import time
 
 SERIAL = 'CUSA00223'
-SERIALS = (SERIAL, 'CUSA00004')
 SLOT_PREFIX = 'infamousss'
 ENV_NAMES = ('ISS_USER_DIR', 'TLG_USER_DIR')
 # What a data folder holds that is worth carrying over. The shader cache (cache/) is left out: it is
 # large and the game rebuilds it.
-MIGRATE = ('savedata', 'savedata_backups', 'tlg.ini')
+KARMA_DATA = ('karma-original', 'karma-saves-v2', 'karma-profile-names',
+              'karma-profile-archive', 'karma-backups')
+MIGRATE = ('savedata', 'savedata_backups', 'tlg.ini', *KARMA_DATA)
 
 
 # ------------------------------------------------------------------------------- pointer file
@@ -129,15 +130,12 @@ def slot_dirs(savedata):
     except OSError:
         return out
     for user in users:
-        for serial in SERIALS:
-            game = user / serial
-            try:
-                slots = sorted(p for p in game.iterdir() if p.is_dir() and not p.name.endswith('.sce_sys'))
-            except OSError:
-                continue
-            # Preserve old US identifiers; qualify other regions to prevent collisions.
-            uid = user.name if serial == SERIAL else f'{user.name}/{serial}'
-            out += [(uid, p.name, p) for p in slots]
+        game = user / SERIAL
+        try:
+            slots = sorted(p for p in game.iterdir() if p.is_dir() and not p.name.endswith('.sce_sys'))
+        except OSError:
+            continue
+        out += [(user.name, p.name, p) for p in slots]
     return out
 
 
@@ -235,7 +233,7 @@ def migration_size(src):
 
 
 def migrate(src, dst):
-    """Copies saves, backups and tlg.ini from the old data folder to the new one. The old folder
+    """Copies saves, backups, Karma tracking and tlg.ini to the new data folder. The old folder
     is never touched. Items already present in `dst` are kept (not overwritten). Returns
     {'copied': [names], 'skipped': [names], 'bytes': n}; raises DataError when it cannot even start
     (same folder, no space, not writable)."""

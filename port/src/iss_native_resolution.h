@@ -43,9 +43,10 @@ static inline int iss_native_integer(const char *s,int min,int max,int *out) {
     *out=(int)n; return 1;
 }
 /* Strict parsing: malformed native settings reject the request, not a silently
- * clamped substitute resolution. Missing keys default to off/100%/edge HUD. */
+ * clamped substitute resolution. Missing keys default to off/100% and the
+ * corrected 16:9 menu canvas. Explicit existing choices remain respected. */
 static inline int iss_native_config(FILE *f, IssNativeConfig *c) {
-    *c=(IssNativeConfig){0,100,1,0};
+    *c=(IssNativeConfig){0,100,0,1};
     if (!f) return 1;
     char line[1024]; int valid=1;
     while (fgets(line,sizeof(line),f)) {
@@ -54,14 +55,14 @@ static inline int iss_native_config(FILE *f, IssNativeConfig *c) {
         if (!strncmp(line,"iss_native_output=",18)) valid &= iss_native_integer(line+18,0,ISS_NATIVE_PRESETS-1,&c->output);
         if (!strncmp(line,"iss_native_percent=",19)) valid &= iss_native_integer(line+19,25,200,&c->percent);
         if (!strncmp(line,"iss_native_hud_edges=",21)) valid &= iss_native_integer(line+21,0,1,&c->hud_edges);
-        if (!strncmp(line,"iss_native_ui_16_9=",19)) valid &= iss_native_integer(line+19,0,1,&c->ui_16_9);
+        if (!strncmp(line,"iss_native_ui_16_9=",19)) valid &= iss_native_integer(line+19,0,2,&c->ui_16_9);
     }
     return valid;
 }
 static inline int iss_native_plan(IssNativeConfig c, IssNativePlan *p) {
     memset(p,0,sizeof(*p));
     if(c.output<=0 || c.output>=ISS_NATIVE_PRESETS || c.percent<25 || c.percent>200 ||
-       (c.hud_edges!=0 && c.hud_edges!=1)||(c.ui_16_9!=0&&c.ui_16_9!=1))return 0;
+       (c.hud_edges!=0 && c.hud_edges!=1)||c.ui_16_9<0||c.ui_16_9>2)return 0;
     p->output_width=iss_native_widths[c.output]; p->output_height=iss_native_heights[c.output];
     /* At 100% these are EXACT output pixels, never an upscale-only 16:9 image.
      * Other percentages round to even pixels; Vulkan tiling alignment is handled
@@ -74,6 +75,14 @@ static inline int iss_native_plan(IssNativeConfig c, IssNativePlan *p) {
     p->ui_height=1080;
     p->ui_width=(p->output_width*1080u+p->output_height/2)/p->output_height;
     if(c.ui_16_9)p->ui_width=1920;
+    // Diagnostic: retain a 16:9 menu aspect while giving fixed-size HUD
+    // artwork the wide display's logical width. Integer 16:9 units keep
+    // the canvas proportional; never alter scene/output dimensions here.
+    if(c.ui_16_9==2 && (uint64_t)p->output_width*9u>(uint64_t)p->output_height*16u){
+        uint32_t wide=(p->output_width*1080u+p->output_height/2)/p->output_height;
+        uint32_t units=(wide+15u)/16u;
+        p->ui_width=units*16u;p->ui_height=units*9u;
+    }
     uint64_t entries=(uint64_t)((p->width+15)/16)*((p->height+15)/16)*128;
     entries=(entries+65535)&~(uint64_t)65535;
     p->light_entries=(uint32_t)(entries<0x320000 ? 0x320000 : entries);

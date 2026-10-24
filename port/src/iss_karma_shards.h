@@ -11,7 +11,8 @@ static inline int iss_shard_cost(const IssShardUpgrade *rows,unsigned count,int 
  for(unsigned i=0;i<count;++i){const IssShardUpgrade *r=rows+i;
   if(!r->family_earned||r->purchased||r->script_off||r->base_power)continue;
   if(r->side < -1 || r->side>1 || r->rank < -1 || r->rank>5 || r->cost<0 || r->cost>1000)return 0;
-  if(sum>INT_MAX-r->cost)return 0;sum+=r->cost;
+  if(sum>INT_MAX-r->cost)return 0;
+  sum+=r->cost;
  }
  *out=sum;return 1;
 }

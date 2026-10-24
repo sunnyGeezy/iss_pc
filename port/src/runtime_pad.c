@@ -21,6 +21,7 @@
 #include <time.h>
 #include <SDL3/SDL.h>
 #include "mouse_stick.h"
+#include "iss_mouse_aim.h"
 #include "mouse_touch.h"
 #include "rumble_gate.h"
 #include "mouse_shake.h"
@@ -595,6 +596,7 @@ static uint32_t sample_mouse(PadData *d, bool aiming_can, const bool *k) {
     mouse_last_us=now;
     static bool was_captured;
     if (!in.mouse_enabled || !m.captured) {
+        runtime_mouse_aim_motion(0,0,in.sensitivity,in.invert_y,0);
         memset(&mouse_stick,0,sizeof(mouse_stick));
         memset(wheel,0,sizeof(wheel));
         mouse_shake_reset(&mouse_shake);
@@ -671,7 +673,10 @@ static uint32_t sample_mouse(PadData *d, bool aiming_can, const bool *k) {
         motion.yaw=fminf(fmaxf(motion.yaw,-1.4f),1.4f);
         motion.aim_pitch=fminf(fmaxf(motion.aim_pitch,-1.2f),1.2f);
         memset(&mouse_stick,0,sizeof(mouse_stick));
+    } else if(runtime_mouse_aim_motion(m.dx,m.dy,in.sensitivity,in.invert_y,1)){
+        memset(&mouse_stick,0,sizeof(mouse_stick));
     } else mouse_stick_update(&mouse_stick,&p,m.dx,m.dy,dt);
+    if(aiming_can || pad_mode)runtime_mouse_aim_motion(0,0,in.sensitivity,in.invert_y,0);
     if (!aiming_can || pad_mode) { mouse_shake_reset(&mouse_shake); mouse_shaking=0; }
     const uint8_t base_x=d->right_x, base_y=d->right_y;
     d->right_x=mouse_stick_add(d->right_x,mouse_stick_axis(&mouse_stick,&p,0));

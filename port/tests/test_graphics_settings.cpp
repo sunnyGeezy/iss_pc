@@ -28,6 +28,8 @@ static void SetEnv(const char* name, const char* value) {
 }
 
 int main() {
+    TlgSettings::Values fresh;
+    assert(fresh.iss_native_ui_16_9==1 && !fresh.iss_native_hud_edges);
     assert(G::ParseDisplayMode("borderless") == G::Borderless && G::ParseDisplayMode("bogus") == G::Windowed);
     assert(G::ParseFpsLimit(240) == 240 && G::ParseFpsLimit(75) == 0);
     assert(G::ParseResolution("1440p") == 3 && G::ParseResolution("8K") == 0);
@@ -116,6 +118,13 @@ int main() {
     v.display_mode=G::Windowed;
     TlgSettings::Load();
     assert(v.display_mode==G::ExclusiveFullscreen);
+    // Changing unrelated overlay settings must preserve the menu-canvas fix.
+    v.iss_native_ui_16_9=true;
+    TlgSettings::Save();
+    v.iss_native_ui_16_9=false;
+    TlgSettings::Load();
+    assert(v.iss_native_ui_16_9);
+    assert(Read(path).find("iss_native_ui_16_9=1\n")!=std::string::npos);
     std::remove(path);
     std::puts("PASS: graphics settings");
 }

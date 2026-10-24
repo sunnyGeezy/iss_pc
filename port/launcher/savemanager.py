@@ -23,7 +23,7 @@ import zipfile
 from struct import unpack_from
 
 import userdata
-from userdata import DataError, SERIAL, SERIALS, SLOT_PREFIX
+from userdata import DataError, SERIAL, SLOT_PREFIX
 
 _FROZEN = bool(getattr(sys, 'frozen', False))
 _SCRIPTS = (Path(sys.executable).resolve().parent if _FROZEN else Path(__file__).resolve().parent.parent) / 'scripts'
@@ -174,17 +174,10 @@ def list_slots(user_dir):
 
 
 def slot_paths(user_dir, slot_id):
-    parts = str(slot_id).split('/')
-    if len(parts) == 2:
-        uid, name = parts
-        serial = SERIAL
-    elif len(parts) == 3:
-        uid, serial, name = parts
-    else:
+    uid, _, name = str(slot_id).partition('/')
+    if not UID_RE.match(uid) or not SLOT_RE.match(name):
         raise SaveError('save_bad_slot', slot_id)
-    if serial not in SERIALS or not UID_RE.fullmatch(uid) or not SLOT_RE.fullmatch(name):
-        raise SaveError('save_bad_slot', slot_id)
-    game = Path(user_dir) / 'savedata' / uid / serial
+    game = Path(user_dir) / 'savedata' / uid / SERIAL
     return game / name, game / (name + '.sce_sys')
 
 
@@ -307,7 +300,7 @@ def duplicate_slot(user_dir, slot_id, running=None):
     folder, sys_dir = slot_paths(user_dir, slot_id)
     if not folder.is_dir():
         raise SaveError('save_bad_slot', slot_id)
-    uid = slot_id.rsplit('/', 1)[0]
+    uid = slot_id.split('/', 1)[0]
     taken = {n for u, n, _ in userdata.slot_dirs(Path(user_dir) / 'savedata') if u == uid}
     n = 0
     while f'{SLOT_PREFIX}User{n}' in taken:
@@ -355,13 +348,6 @@ def _safe_parts(name):
     return parts
 
 
-def _target_user(uid, target_uid):
-    if target_uid is None:
-        return uid
-    parts = uid.split('/')
-    return str(target_uid) if len(parts) == 1 else f'{target_uid}/{parts[1]}'
-
-
 class Plan:
     """What a source (a .zip or a data folder) would add: slots[(uid, slot)] -> {'dir': [(parts, src)],
     'sys': [(parts, src)]}, plus how many entries were ignored."""
@@ -374,7 +360,7 @@ class Plan:
 
     @property
     def users(self):
-        return sorted({u.split('/')[0] for u, _ in self.slots})
+        return sorted({u for u, _ in self.slots})
 
     def add(self, uid, slot, is_sys, rel, src, size):
         entry = self.slots.setdefault((uid, slot), {'dir': [], 'sys': [], 'param': None})
@@ -393,8 +379,8 @@ def _classify(parts):
             uid, serial, slotdir = rest[1], rest[2], rest[3]
             is_sys = slotdir.endswith('.sce_sys')
             slot = slotdir[:-8] if is_sys else slotdir
-            if serial in SERIALS and UID_RE.fullmatch(uid) and SLOT_RE.fullmatch(slot):
-                return uid if serial == SERIAL else f'{uid}/{serial}', slot, is_sys, rest[4:]
+            if serial == SERIAL and UID_RE.match(uid) and SLOT_RE.match(slot):
+                return uid, slot, is_sys, rest[4:]
     return None
 
 
@@ -460,7 +446,7 @@ def import_preview(user_dir, plan, target_uid=None):
     existing = {s['id']: s for s in list_slots(user_dir)}
     out = []
     for (uid, slot), entry in sorted(plan.slots.items()):
-        uid = _target_user(uid, target_uid)
+        uid = target_uid or uid
         title = ''
         if entry['param'] is not None:
             try:
@@ -507,7 +493,7 @@ def import_plan(user_dir, plan, replace=(), target_uid=None, running=None):
     preview = {p['id']: p for p in import_preview(user_dir, plan, target_uid)}
     todo, skipped = [], []
     for (uid, slot), entry in sorted(plan.slots.items()):
-        sid = f'{_target_user(uid, target_uid)}/{slot}'
+        sid = f'{target_uid or uid}/{slot}'
         if preview[sid]['exists'] and sid not in replace:
             skipped.append(sid)
         else:
@@ -538,7 +524,8 @@ def import_plan(user_dir, plan, replace=(), target_uid=None, running=None):
             if zf:
                 zf.close()
         for (uid, slot), sid, entry in todo:
-            game = slot_paths(user_dir, sid)[0].parent
+            tuid = sid.split('/', 1)[0]
+            game = user_dir / 'savedata' / tuid / SERIAL
             game.mkdir(parents=True, exist_ok=True)
             replaced = []
             try:
@@ -584,7 +571,7 @@ def export_zip(user_dir, dest, slot_ids=None):
                 for base in (folder, sys_dir):
                     for p in sorted(base.rglob('*')) if base.is_dir() else []:
                         if p.is_file():
-                            arc = '/'.join(('savedata', s['user'].split('/')[0], base.parent.name, base.name, *p.relative_to(base).parts))
+                            arc = '/'.join(('savedata', s['user'], SERIAL, base.name, *p.relative_to(base).parts))
                             zf.write(p, arc)
         os.replace(tmp, dest)
     except OSError as error:

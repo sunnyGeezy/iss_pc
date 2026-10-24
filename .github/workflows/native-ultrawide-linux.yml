@@ -1,4 +1,4 @@
-name: Native ultrawide Linux test
+name: Beta compatibility Linux test
 on:
   push:
     branches: [build/native-ultrawide-linux-test]
@@ -93,9 +93,9 @@ jobs:
             echo "::endgroup::"
           done
           (( ${#failed[@]} == 0 )) || { echo "::error::GPU tests failed: ${failed[*]}"; exit 1; }
-      - name: Native resolution and Karma checks
+      - name: Compatibility regression checks
         run: |
-          cmake --build out/gpu_v2 --target test_native_resolution test_karma_regression test_karma_quarantine test_karma_save_versions test_karma_save_session test_karma_profiles test_exclusive_presentation test_graphics_settings -j2
+          cmake --build out/gpu_v2 --target test_mouse_aim test_hud_trace test_native_resolution test_karma_regression test_karma_quarantine test_karma_save_versions test_karma_save_session test_karma_profiles test_exclusive_presentation test_graphics_settings -j2
           ctest --test-dir out/gpu_v2 --output-on-failure
       - name: Package
         run: bash packaging/linux/package.sh

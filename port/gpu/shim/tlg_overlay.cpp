@@ -390,28 +390,7 @@ std::string OverlayText() {
 constexpr const char* Unsupported = "Unavailable: game version or code signature mismatch.";
 
 
-// The launcher's hidden advanced mode (TLG_ADVANCED=1, or ISS_ADVANCED=1 set by hand): only then the
-// Image and Performance tabs show. Otherwise the launcher sets the graphics up for the hardware
-// (launcher/hardware.py) and the menu keeps Overlay (with the window mode) and Controls.
-bool AdvancedMenu() {
-    static const bool advanced = [] {
-        for (const char* name : {"TLG_ADVANCED", "ISS_ADVANCED"})
-            if (const char* value = std::getenv(name); value && value[0] == '1') return true;
-        return false;
-    }();
-    return advanced;
-}
-
-bool MenuTabVisible(int tab) {
-#ifdef TLG_RENDERER_V2
-    // Keep the original Image and Performance tabs alongside the added mods.
-    (void)tab;
-    return true;
-#else
-    return AdvancedMenu() || tab == 0 || tab == 3;
-#endif
-}
-
+// Display mode row, shared with the Native rendering tab.
 void DisplayModeRow() {
     namespace G = TlgGraphics;
     auto& s = TlgSettings::Get();
@@ -429,7 +408,9 @@ void ImageTab() {
     auto& s = TlgSettings::Get();
     ImGui::SeparatorText(TL("Display", "Tela"));
     if (BeginRows("##display")) {
-        DisplayModeRow();
+        static const char* const modes[] = {TL("Windowed", "Janela"), TL("Borderless window", "Janela sem borda"), TL("Fullscreen", "Tela cheia")};
+        ChoiceRow(TL("Display mode", "Modo de exibição"), s.display_mode, G::DisplayModeCount == 3 ? modes : G::DisplayModeNames.data(),
+                  nullptr, G::DisplayModeCount, TL("Windowed, borderless window or exclusive fullscreen.", "Janela, janela sem borda ou tela cheia exclusiva."));
         CheckRow("VSync", s.vsync, TL("Waits for the monitor: no tearing, a little more input delay.", "Espera o monitor: sem tearing, um pouco mais de atraso de entrada."));
         ImGui::EndTable();
     }
@@ -649,6 +630,7 @@ void FixesSection() {
 
 void OpenGuide(); // the graffiti guide (below, with the save dialogs)
 
+extern "C" int runtime_mouse_aim_installed(void);
 void ControlsTab() {
     auto& s = TlgSettings::Get();
     // Mouse (src/runtime_pad.c): the camera settings apply at once. The buttons and the touchpad
@@ -663,6 +645,9 @@ void ControlsTab() {
                  TL("How far the camera turns for the same mouse movement.", "Quanto a câmera gira para o mesmo movimento do mouse."));
         CheckRow(TL("Invert Y axis", "Inverter eixo Y"), s.mouse_invert_y,
                  TL("Moving the mouse forward looks down.", "Empurrar o mouse para frente olha para baixo."));
+        const bool direct_mouse=runtime_mouse_aim_installed()!=0;
+        if(direct_mouse)InfoRow(TL("Camera input", "Entrada da câmera"),TL("Direct mouse (experimental)","Mouse direto (experimental)"));
+        ImGui::BeginDisabled(direct_mouse);
         FloatRow(TL("Smoothing", "Suavização"), s.mouse_smoothing, 0.0f, 0.9f, "%.2f",
                  TL("Evens out the camera motion; higher values feel softer and a little slower.",
                     "Deixa o movimento da câmera mais uniforme; valores altos ficam mais suaves e um pouco mais lentos."));
@@ -671,6 +656,7 @@ void ControlsTab() {
         FloatRow(TL("Anti-dead zone", "Anti-zona morta"), s.mouse_deadzone, 0.0f, 0.5f, "%.2f",
                  TL("Small mouse movements skip the game's stick dead zone. Raise it if slow movements do nothing.",
                     "Movimentos pequenos do mouse pulam a zona morta do analógico do jogo. Aumente se movimentos lentos não fizerem nada."));
+        ImGui::EndDisabled();
         ImGui::EndDisabled();
         InfoRow(TL("Left / right / middle", "Esquerdo / direito / do meio"), "R2 / L2 / R3");
         InfoRow(TL("Touchpad mode", "Modo touchpad"), TL("hold Left Ctrl or Mouse X1", "segure Ctrl esquerdo ou botão X1 do mouse"));
@@ -709,14 +695,6 @@ void ControlsTab() {
 void OverlayTab() {
     namespace P = TlgPerfStats;
     auto& s = TlgSettings::Get();
-    if (!AdvancedMenu()) {   // the Image tab (with the window mode) is hidden
-        ImGui::SeparatorText(TL("Display", "Tela"));
-        if (BeginRows("##display_player")) {
-            DisplayModeRow();
-            ImGui::EndTable();
-        }
-        ImGui::SeparatorText(TL("Overlay", "Overlay"));
-    }
     if (BeginRows("##overlay_on")) {
         CheckRow(TL("Show overlay (F10)", "Mostrar overlay (F10)"), s.show_fps, TL("The performance overlay in a corner of the screen.", "O overlay de desempenho num canto da tela."));
         ImGui::EndTable();
@@ -850,16 +828,8 @@ void Menu() {
                              ? -1
                              : 0;
         if (step) {
-            // Keyboard/gamepad navigation follows the same visibility as the tab bar.
-            int tab = s.menu_tab;
-            do {
-                tab = (tab + step + TabCount) % TabCount;
-            } while (!MenuTabVisible(tab));
-            requested_tab = tab;
+            requested_tab = (s.menu_tab + step + TabCount) % TabCount;
         }
-    }
-    if (!MenuTabVisible(s.menu_tab) && requested_tab < 0) {
-        requested_tab = 0;   // a tab saved before the automatic setup, now hidden
     }
     const float footer = ImGui::GetFrameHeightWithSpacing() * 2.0f + ImGui::GetTextLineHeightWithSpacing() * 2.0f;
     if (ImGui::BeginTabBar("##tabs")) {
@@ -870,9 +840,6 @@ void Menu() {
 #endif
                                                    };
         for (int tab = 0; tab < TabCount; ++tab) {
-            if (!MenuTabVisible(tab)) {
-                continue;
-            }
             const ImGuiTabItemFlags flags = requested_tab == tab ? ImGuiTabItemFlags_SetSelected : 0;
             if (!ImGui::BeginTabItem(tabs[tab], nullptr, flags)) {
                 continue;

@@ -16,6 +16,11 @@ static void fixture(std::vector<unsigned char>& image){
     memcpy(image.data()+0x5802e6,iss_native_aspect_width,sizeof(iss_native_aspect_width));
 }
 int main(int argc,char** argv){
+    IssNativeConfig fresh;
+    assert(iss_native_config(nullptr,&fresh));
+    assert(fresh.output==0 && fresh.percent==100 && fresh.ui_16_9==1 && fresh.hud_edges==0);
+    FILE* legacy=tmpfile();assert(legacy);fputs("iss_native_ui_16_9=0\niss_native_hud_edges=1\n",legacy);rewind(legacy);
+    assert(iss_native_config(legacy,&fresh)&&fresh.ui_16_9==0&&fresh.hud_edges==1);fclose(legacy);
     IssNativePlan p;
     for(int output=1;output<ISS_NATIVE_PRESETS;output++){
         assert(iss_native_plan({output,100,1},&p));
@@ -87,7 +92,17 @@ int main(int argc,char** argv){
         assert(read32(image.data()+0x1f0403)==1920&&read32(image.data()+0x1f03fb)==1080);
     }
     f=tmpfile();assert(f);fputs("iss_native_ui_16_9=1\n",f);rewind(f);assert(iss_native_config(f,&c)&&c.ui_16_9==1);fclose(f);
-    f=tmpfile();assert(f);fputs("iss_native_ui_16_9=2\n",f);rewind(f);assert(!iss_native_config(f,&c));fclose(f);
+    for(int output:{1,2,3,4,5}){
+        assert(iss_native_plan({output,100,0,2},&p));
+        assert(p.ui_width*9==p.ui_height*16);
+        assert(p.width==iss_native_widths[output]&&p.height==iss_native_heights[output]);
+        if(output==3)assert(p.ui_width==2592&&p.ui_height==1458);
+        if(output==5)assert(p.ui_width==3840&&p.ui_height==2160);
+        image=original;assert(iss_native_apply(image.data(),image.size(),"CUSA00223","01.07",{output,100,0,2}));
+        assert(read32(image.data()+0x1f0403)==p.ui_width&&read32(image.data()+0x1f03fb)==p.ui_height);
+    }
+    f=tmpfile();assert(f);fputs("iss_native_ui_16_9=2\n",f);rewind(f);assert(iss_native_config(f,&c)&&c.ui_16_9==2);fclose(f);
+    f=tmpfile();assert(f);fputs("iss_native_ui_16_9=3\n",f);rewind(f);assert(!iss_native_config(f,&c));fclose(f);
     // Optional local-only executable validation: parse PT_LOAD segments instead
     // of assuming file offsets equal virtual addresses. No executable is shipped.
     if(argc>1){

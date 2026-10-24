@@ -72,7 +72,21 @@ static inline unsigned iss_karma_bridge_ex(unsigned char *p, uintptr_t helper,
             (unsigned char)(0x84+8*(i%8)),0x24};
         memcpy(p+n,op,6);n+=6;uint32_t d=32+32*i;memcpy(p+n,&d,4);n+=4;
     }
-    if(shard_args){const unsigned char args[]={0x49,0x89,0xd0,0x89,0xf2,0x48,0x89,0xf9};memcpy(p+n,args,sizeof(args));n+=sizeof(args);}
+    if(shard_args==4){
+        /* Direct camera: editable saved YMM0, camera-data R12, context from
+         * original RSP+0x50. Other lanes and all other registers are restored. */
+        const unsigned char args[]={0x48,0x8d,0x4c,0x24,0x20,0x4c,0x89,0xe2,
+            0x4c,0x8b,0x83,0xd0,0,0,0};
+        memcpy(p+n,args,sizeof(args));n+=sizeof(args);
+    }else if(shard_args==3){
+        /* UI completed-layout observer: saved RBX widget and R14 output matrix. */
+        const unsigned char args[]={0x48,0x8b,0x4b,0x58,0x48,0x8b,0x53,0x08};
+        memcpy(p+n,args,sizeof(args));n+=sizeof(args);
+    }else if(shard_args==2){
+        /* UI observer: RSI widget, RDI matrix destination, original return PC. */
+        const unsigned char args[]={0x48,0x89,0xf1,0x48,0x89,0xfa,0x4c,0x8b,0x83,0x80,0,0,0};
+        memcpy(p+n,args,sizeof(args));n+=sizeof(args);
+    }else if(shard_args){const unsigned char args[]={0x49,0x89,0xd0,0x89,0xf2,0x48,0x89,0xf9};memcpy(p+n,args,sizeof(args));n+=sizeof(args);}
     const unsigned char fxsave[]={0x48,0x0f,0xae,0x84,0x24,0x20,0x02,0,0,0x48,0xb8};
     memcpy(p+n,fxsave,sizeof(fxsave));n+=sizeof(fxsave);memcpy(p+n,&helper,8);n+=8;
     p[n++]=0xff;p[n++]=0xd0;

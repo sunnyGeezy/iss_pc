@@ -69,7 +69,8 @@ static int karma_save_trace(void){const char *v=getenv("ISS_KARMA_SAVE_TRACE");r
 static int karma_save_file(const File *f){return f&&!strncmp(f->path,"/savedata",9)&&strstr(f->path,"/dis.dat")&&strlen(strstr(f->path,"/dis.dat"))==8;}
 extern void runtime_karma_observe_save_read(void);
 static void karma_trace_io(int fd,const char *operation,int64_t offset,int64_t count){
-    if(!karma_save_trace())return;File *f=fd>=3&&fd<MAX_FILES&&files[fd].used?&files[fd]:NULL;
+    if(!karma_save_trace())return;
+    File *f=fd>=3&&fd<MAX_FILES&&files[fd].used?&files[fd]:NULL;
     if(!karma_save_file(f))return;
     fprintf(stderr,"KARMA_SAVE_IO op=%s guest=%s offset=%lld bytes=%lld\n",operation,f->path,(long long)offset,(long long)count);
     if(count>0&&(!strcmp(operation,"read")||!strcmp(operation,"pread")))runtime_karma_observe_save_read();
