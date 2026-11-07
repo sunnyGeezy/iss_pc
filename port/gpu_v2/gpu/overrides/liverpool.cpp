@@ -4255,15 +4255,21 @@ Liverpool::Task Liverpool::ProcessCompute(std::span<const u32> acb, u32 vqid, u6
                                                 previous.ring, (unsigned long long)previous.ticket,
                                                 previous.value);
                                    static std::atomic<u32> logged{0};
-                                   if (logged.fetch_add(1) < 32)
+                                   if (logged.fetch_add(1) < 32) {
+#ifdef _WIN32
+                                       const auto thread_id = GetCurrentThreadId();
+#else
+                                       const auto thread_id = gettid();
+#endif
                                        std::fprintf(stderr,
                                                     "LABEL_BACKWARDS addr=0x%llx before=0x%x new=0x%x "
                                                     "thread=%lu ring=%u ticket=%llu done_before=%llu "
                                                     "turn=%d\n",
                                                     (unsigned long long)packet.Address<VAddr>(),
-                                                    before, now, GetCurrentThreadId(), ring,
+                                                    before, now, static_cast<unsigned long>(thread_id), ring,
                                                     (unsigned long long)label_ticket,
                                                     (unsigned long long)done_before, turn);
+                                   }
                                }
                            }
                            Core::Memory::Instance()->TryWriteBacking(

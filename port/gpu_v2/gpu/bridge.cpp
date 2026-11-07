@@ -43,9 +43,9 @@ namespace iss { extern std::atomic<unsigned> g_preload_entries, g_preload_total;
 // boost.asio needs Winsock 2 before <windows.h> pulls in the old WinSock.h.
 #ifdef _WIN32
 #include <winsock2.h>
-#endif
 #include <windows.h>
 #include <tlhelp32.h>
+#endif
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/executor_work_guard.hpp>
 #include <xxhash.h>
