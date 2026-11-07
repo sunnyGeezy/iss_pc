@@ -61,6 +61,8 @@ cp -r patches "$dest/"
 # The shader list generator (scripts/build_jobs.py imports it from ../tools): plain files, like scripts/.
 mkdir -p "$dest/tools"
 cp -r tools/xpps "$dest/tools/"
+mkdir -p "$dest/tools/verify"
+cp tools/verify/*-107-art.json "$dest/tools/verify/"
 find "$dest" -name __pycache__ -prune -exec rm -r {} +
 cp LICENSE packaging/README-player.md "$dest/"
 # The release name (vYYYY.MM.DD-<commit>, as the CI publishes it): the launcher shows it and compares it with the latest release.
