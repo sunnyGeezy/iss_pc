@@ -78,6 +78,7 @@ int main(void) {
     assert(fd>=0);
     close(fd);
     setenv("TLG_PAD_FILE",path,1);
+    setenv("TLG_PAD_THREAD","0",1); /* sampled on this thread: a pump is seen by the next read */
     setenv("SDL_VIDEODRIVER","dummy",1);
     /* Only the virtual test controller is a gamepad, whatever is plugged in. */
     SDL_SetHint(SDL_HINT_GAMECONTROLLER_IGNORE_DEVICES_EXCEPT,"0x1d50/0x6189");

@@ -1389,6 +1389,15 @@ PipelineCache::~PipelineCache() {
 } // namespace Vulkan
 #include <windows.h>
 #include <psapi.h>
+namespace iss::shader_swap {
+std::string ExeDirectory() {
+    char path[MAX_PATH]{};
+    const DWORD n = GetModuleFileNameA(nullptr, path, MAX_PATH);
+    std::string dir(path, n);
+    const size_t slash = dir.find_last_of("\\/");
+    return slash == std::string::npos ? std::string{"."} : dir.substr(0, slash);
+}
+} // namespace iss::shader_swap
 namespace Vulkan {
 /// ISS_AOT_TRACE=1: names the module and offset of an access violation before the probe's
 /// handler ends the process.
