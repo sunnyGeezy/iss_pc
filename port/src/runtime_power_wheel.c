@@ -76,11 +76,19 @@ void runtime_power_wheel_request(int index){
 extern int runtime_mouse_aim_camera_live(void);
 static atomic_int pw_cutscene,pw_cutscene_reports;
 /* Diagnostic (ISS_CUTSCENE_SHOT=1): game-only screenshots 1.5 s and 4 s into the first 10 cutscenes. */
+#ifdef _WIN32
 extern void tlggpu_request_screenshot(void);
+#else
+/* The Linux probe can also link against renderer 1, which has no screenshot hook. */
+extern void tlggpu_request_screenshot(void) __attribute__((weak));
+#endif
 static atomic_llong pw_shot_start;static atomic_int pw_shot_cutscenes,pw_shot_taken;
 static long long pw_now_ms(void){struct timespec t;timespec_get(&t,TIME_UTC);return (long long)t.tv_sec*1000+t.tv_nsec/1000000;}
 static int pw_shots_enabled(void){static int on=-1;if(on<0){const char *e=getenv("ISS_CUTSCENE_SHOT");on=e&&e[0]=='1';}return on;}
 static void pw_cutscene_shots_start(void){
+#ifndef _WIN32
+    if(!tlggpu_request_screenshot)return;
+#endif
     if(!pw_shots_enabled()||atomic_fetch_add(&pw_shot_cutscenes,1)>=10)return;
     atomic_store(&pw_shot_taken,0);atomic_store(&pw_shot_start,pw_now_ms());
 }
