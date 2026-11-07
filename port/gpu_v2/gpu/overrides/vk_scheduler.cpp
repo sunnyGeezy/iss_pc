@@ -374,9 +374,17 @@ struct Scheduler::GpuProfile {
     std::vector<u64> results;
 };
 
-} // namespace Vulkan
-extern "C" char __ImageBase; // start of the exe image (PE linkers), for BARRIER_TRACE offsets
-namespace Vulkan {
+#ifdef _WIN32
+extern "C" char __ImageBase; // linker-defined start of this executable's image
+static u64 ImageBase() {
+    return reinterpret_cast<u64>(&__ImageBase);
+}
+#else
+static u64 ImageBase() {
+    return 0;
+}
+#endif
+
 namespace {
 // ISS_BARRIER_TRACE=1: per caller statistics of the barriers recorded through CommandRecorder.
 struct BarrierTraceStats {
@@ -416,8 +424,7 @@ const char* TraceKindName(u32 kind) {
 } // namespace
 
 void Scheduler::TraceBarrier(const vk::DependencyInfo& info, void* caller_address) {
-    const u64 caller = reinterpret_cast<u64>(caller_address) -
-                       reinterpret_cast<u64>(&__ImageBase);
+    const u64 caller = reinterpret_cast<u64>(caller_address) - ImageBase();
     BarrierTrace& trace = GetBarrierTrace();
     std::scoped_lock lock{trace.mutex};
     trace.names[this] = name;
@@ -716,17 +723,6 @@ bool PassBreakTraceEnabled() {
 }
 PassBreakTrace pass_break_trace;
 } // namespace
-#ifdef _WIN32
-extern "C" char __ImageBase; // linker-defined start of this executable's image
-static u64 ImageBase() {
-    return reinterpret_cast<u64>(&__ImageBase);
-}
-#else
-static u64 ImageBase() {
-    return 0;
-}
-#endif
-
 void Scheduler::BeginRendering(const RenderState& new_state) {
     AssertCpRecordingLane();
     if (is_rendering && render_state == new_state && !rendering_flags) {
