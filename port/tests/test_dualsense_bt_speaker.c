@@ -1,5 +1,8 @@
 /* Bluetooth DualSense speaker packets (src/dualsense_bt_speaker.h): CRC, report 0x36 layout,
  * the audio-route effects block and the 512 -> 480 framing. No controller or SDL needed. */
+#ifndef _WIN32
+#define _POSIX_C_SOURCE 200809L
+#endif
 #include <assert.h>
 #include <math.h>
 #include <stdio.h>
