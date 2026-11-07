@@ -2,6 +2,7 @@
 #include <assert.h>
 #include <unistd.h>
 #include "../src/runtime_pad.c"
+#include "test_pad_audio_stubs.h"
 // runtime_mouse_aim.c (the native aim hook) needs the guest; pad tests run without it.
 int runtime_mouse_aim_installed(void) { return 0; }
 int runtime_power_wheel_gameplay(void) { return 1; }
