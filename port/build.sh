@@ -80,7 +80,7 @@ read -r -a libraries <<< "$(pkg-config --libs vulkan sdl3 libavcodec libavutil l
 if pkg-config --exists opus; then
     read -r -a opus_cflags <<< "$(pkg-config --cflags opus)"
     read -r -a opus_libraries <<< "$(pkg-config --libs opus)"
-    includes+=(-DISS_HAVE_OPUS "${opus_cflags[@]}")
+    includes+=(-DISS_HAVE_OPUS "-I$(pkg-config --variable=includedir opus)" "${opus_cflags[@]}")
     libraries+=("${opus_libraries[@]}")
 fi
 if pkg-config --exists sbc; then
@@ -162,7 +162,7 @@ if [[ ${1:-} == --test || ${1:-} == --test-only ]]; then
     "$CC" -std=c11 -O2 -g -Wall -Wextra -Werror -UNDEBUG tests/test_dualsense_bt_speaker.c -Isrc -lm -o out/dualsense-bt-speaker-test
     out/dualsense-bt-speaker-test
     if pkg-config --exists opus; then
-        "$CC" -std=c11 -O2 -g -Wall -Wextra -Werror -UNDEBUG tests/test_dualsense_bt_opus.c -Isrc $(pkg-config --cflags --libs opus) -lm -o out/dualsense-bt-opus-test
+        "$CC" -std=c11 -O2 -g -Wall -Wextra -Werror -UNDEBUG tests/test_dualsense_bt_opus.c -Isrc "-I$(pkg-config --variable=includedir opus)" $(pkg-config --cflags --libs opus) -lm -o out/dualsense-bt-opus-test
         out/dualsense-bt-opus-test
     fi
     "$CC" -std=c11 -O2 -g -Wall -Wextra -Werror -UNDEBUG -pthread "${includes[@]}" -I. -Isrc tests/test_mouse_pad.c "${libraries[@]}" -lm -o out/mouse-pad-test
